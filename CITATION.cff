@@ -1,0 +1,13 @@
+cff-version: 1.2.0
+title: "AstroSplat: Browser-native volumetric visualization for astrophysical vector fields"
+message: "If you use this software, please cite it as below."
+type: software
+authors:
+  - family-names: "Figueiredo"
+    given-names: "Vitor M. F."
+    orcid: "https://orcid.org/0009-0004-7358-4622"
+version: "0.1.0"
+date-released: 2026-04-01
+doi: "https://doi.org/10.5281/zenodo.19377621"
+repository-code: "https://github.com/VitorFigueiredoResearch/AstroSplat"
+license: "MIT"
