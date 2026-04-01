@@ -1,0 +1,1143 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Planetary Magnetic Field Line Visualizer</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    background: #050510; color: #cdd6f4;
+    font-family: 'Courier New', monospace;
+    overflow: hidden; height: 100vh;
+    display: flex; flex-direction: column;
+  }
+
+  /* ── Top HUD ─────────────────────────────────────────────── */
+  #hud {
+    position: fixed; top: 0; left: 0; right: 0;
+    padding: 8px 14px;
+    background: rgba(5,5,20,0.85);
+    backdrop-filter: blur(6px);
+    border-bottom: 1px solid rgba(136,192,208,0.2);
+    display: flex; align-items: center; gap: 10px;
+    z-index: 100; flex-wrap: wrap;
+  }
+  #hud h1 { font-size: 12px; color: #88c0d0; letter-spacing: 2px; text-transform: uppercase; }
+  .badge {
+    font-size: 10px; padding: 2px 7px;
+    border-radius: 4px;
+    background: rgba(136,192,208,0.10);
+    border: 1px solid rgba(136,192,208,0.22);
+    color: #8fbcbb;
+  }
+  .badge-warn { background: rgba(208,135,112,0.10); border-color: rgba(208,135,112,0.3); color: #d08770; }
+  .badge-meta { background: rgba(163,190,140,0.10); border-color: rgba(163,190,140,0.3); color: #a3be8c; }
+  #stats-pts, #stats-fps, #stats-mem { color: #a3be8c; }
+  #meta-badge { display: none; }
+
+  /* ── Load Panel ───────────────────────────────────────────── */
+  #load-overlay {
+    position: fixed; inset: 0;
+    display: flex; flex-direction: column;
+    align-items: center; justify-content: center;
+    background: #050510; z-index: 200; gap: 16px;
+  }
+  #load-overlay h2 { font-size: 20px; color: #88c0d0; letter-spacing: 3px; }
+  #load-overlay p  { font-size: 11px; color: #6b7a9a; max-width: 380px; text-align: center; line-height: 1.6; }
+  #drop-zone {
+    width: 330px; height: 110px;
+    border: 2px dashed rgba(136,192,208,0.4); border-radius: 10px;
+    display: flex; align-items: center; justify-content: center;
+    flex-direction: column; gap: 6px; cursor: pointer;
+    transition: border-color 0.2s, background 0.2s; font-size: 12px;
+  }
+  #drop-zone:hover, #drop-zone.drag-over {
+    border-color: #88c0d0; background: rgba(136,192,208,0.06);
+  }
+  #drop-zone span { font-size: 26px; }
+  #file-input { display: none; }
+  #error-msg { color: #bf616a; font-size: 11px; display: none; }
+
+  /* ── Left Controls Panel ──────────────────────────────────── */
+  #controls {
+    position: fixed; bottom: 12px; left: 12px;
+    background: rgba(5,5,20,0.85);
+    border: 1px solid rgba(136,192,208,0.15);
+    border-radius: 8px; padding: 10px 13px;
+    font-size: 11px; line-height: 1.9; z-index: 100;
+    min-width: 175px; max-height: calc(100vh - 80px); overflow-y: auto;
+  }
+  #controls h3 { color: #88c0d0; font-size: 9px; letter-spacing: 2px; margin-bottom: 2px; margin-top: 6px; }
+  #controls h3:first-child { margin-top: 0; }
+  #controls label { display: flex; align-items: center; justify-content: space-between; gap: 6px; color: #8a95aa; }
+  #controls input[type=range] { width: 85px; accent-color: #88c0d0; }
+  .val-display { color: #a3be8c; min-width: 30px; text-align: right; }
+  button.ctrl-btn {
+    margin-top: 4px; width: 100%; padding: 4px 0;
+    background: rgba(136,192,208,0.08);
+    border: 1px solid rgba(136,192,208,0.22);
+    border-radius: 4px; color: #88c0d0;
+    font-family: inherit; font-size: 10px;
+    cursor: pointer; letter-spacing: 1px;
+  }
+  button.ctrl-btn:hover { background: rgba(136,192,208,0.18); }
+  button.ctrl-btn.active { background: rgba(136,192,208,0.28); border-color: #88c0d0; color: #ffffff; }
+  button.ctrl-btn.disabled-btn { opacity: 0.4; cursor: not-allowed; }
+  .btn-row { display: flex; gap: 4px; }
+  .btn-row button.ctrl-btn { flex: 1; }
+  .sep { border: none; border-top: 1px solid rgba(136,192,208,0.10); margin: 5px 0; }
+  .check-row { display: flex; align-items: center; gap: 6px; color: #8a95aa; cursor: pointer; }
+  .check-row input[type=checkbox] { accent-color: #88c0d0; }
+  .check-row.disabled-row { opacity: 0.4; cursor: not-allowed; }
+
+  /* ── Right Info Panel ─────────────────────────────────────── */
+  #info-panel {
+    position: fixed; bottom: 12px; right: 12px;
+    background: rgba(5,5,20,0.85);
+    border: 1px solid rgba(136,192,208,0.15);
+    border-radius: 8px; padding: 10px 13px;
+    font-size: 10px; line-height: 1.8; z-index: 100;
+    min-width: 190px; max-width: 240px;
+    display: none;
+  }
+  #info-panel h3 { color: #88c0d0; font-size: 9px; letter-spacing: 2px; margin-bottom: 4px; }
+  .info-row { display: flex; justify-content: space-between; gap: 8px; color: #8a95aa; }
+  .info-val { color: #a3be8c; text-align: right; }
+  .ds-entry { display: flex; align-items: center; gap: 6px; margin: 2px 0; }
+  .ds-swatch { width: 8px; height: 8px; border-radius: 2px; flex-shrink: 0; }
+
+  /* ── Domain Panel ─────────────────────────────────────────── */
+  #domain-panel {
+    position: fixed; top: 44px; right: 12px;
+    background: rgba(5,5,20,0.85);
+    border: 1px solid rgba(136,192,208,0.15);
+    border-radius: 8px; padding: 10px 13px;
+    font-size: 10px; z-index: 100;
+    display: none; min-width: 200px;
+  }
+  #domain-panel h3 { color: #88c0d0; font-size: 9px; letter-spacing: 2px; margin-bottom: 6px; }
+  .dom-row { display: flex; align-items: center; gap: 4px; margin: 3px 0; color: #8a95aa; }
+  .dom-row label { min-width: 18px; }
+  .dom-row input[type=number] {
+    width: 52px; background: rgba(136,192,208,0.06);
+    border: 1px solid rgba(136,192,208,0.2); border-radius: 3px;
+    color: #cdd6f4; font-family: inherit; font-size: 10px;
+    padding: 1px 4px; text-align: center;
+  }
+
+  /* ── Memory Warning ───────────────────────────────────────── */
+  #mem-warning {
+    position: fixed; top: 48px; left: 50%; transform: translateX(-50%);
+    background: rgba(191,97,106,0.12);
+    border: 1px solid rgba(191,97,106,0.35);
+    border-radius: 6px; padding: 5px 12px;
+    font-size: 10px; color: #bf616a;
+    display: none; z-index: 100; white-space: nowrap;
+  }
+
+  #canvas-container { flex: 1; }
+  ::-webkit-scrollbar { width: 4px; } ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb { background: rgba(136,192,208,0.3); border-radius: 2px; }
+</style>
+</head>
+<body>
+
+<!-- ── Load overlay ──────────────────────────────────────────────────────── -->
+<div id="load-overlay">
+  <h2>MAGNETIC FIELD LINE VISUALIZER</h2>
+  <p>Planetary flux tube · field line structure · ellipsoidal splat approximation<br>
+     Prototype v2.0 — synthetic and observational datasets supported</p>
+  <div id="drop-zone" onclick="document.getElementById('file-input').click()">
+    <span>📂</span>
+    <div>Drop field line dataset JSON here</div>
+    <div style="color:#4a5570;font-size:10px">or click to browse · append mode available after first load</div>
+  </div>
+  <input type="file" id="file-input" accept=".json" />
+  <p id="error-msg">⚠ File could not be loaded. Confirm the file conforms to the expected JSON schema.</p>
+</div>
+
+<!-- ── Top HUD ───────────────────────────────────────────────────────────── -->
+<div id="hud">
+  <h1>🪐 Field Line Structure</h1>
+  <span class="badge">Planetary Flux Tube</span>
+  <span class="badge">Prototype Visualizer v2.0</span>
+  <span class="badge" id="stats-pts">Points: —</span>
+  <span class="badge" id="stats-fps">FPS: —</span>
+  <span class="badge" id="stats-mem">MEM: —</span>
+  <span class="badge badge-warn">MAX 5,000 pts</span>
+  <span class="badge badge-meta" id="meta-badge">—</span>
+  <span class="badge" id="render-mode-badge">Basic</span>
+</div>
+
+<!-- ── Memory warning ────────────────────────────────────────────────────── -->
+<div id="mem-warning">Heap usage threshold exceeded. Select "Purge &amp; Reset" to release GPU resources.</div>
+
+<!-- ── Domain settings panel ─────────────────────────────────────────────── -->
+<div id="domain-panel">
+  <h3>SPATIAL DOMAIN</h3>
+  <div style="display:flex;gap:3px;margin-bottom:6px;flex-wrap:wrap;">
+    <button class="ctrl-btn" onclick="applyDomainPreset('saturn')" style="width:auto;padding:2px 6px;font-size:9px">Saturn</button>
+    <button class="ctrl-btn" onclick="applyDomainPreset('solar')"  style="width:auto;padding:2px 6px;font-size:9px">Solar AR</button>
+    <button class="ctrl-btn" onclick="applyDomainPreset('wide')"   style="width:auto;padding:2px 6px;font-size:9px">Wide</button>
+    <button class="ctrl-btn" onclick="applyDomainPreset('none')"   style="width:auto;padding:2px 6px;font-size:9px">None</button>
+  </div>
+  <div class="dom-row"><label>X</label>
+    <input type="number" id="d-xmin" value="-20" step="1" /><span style="color:#555">–</span>
+    <input type="number" id="d-xmax" value="20"  step="1" />
+  </div>
+  <div class="dom-row"><label>Y</label>
+    <input type="number" id="d-ymin" value="-20" step="1" /><span style="color:#555">–</span>
+    <input type="number" id="d-ymax" value="20"  step="1" />
+  </div>
+  <div class="dom-row"><label>Z</label>
+    <input type="number" id="d-zmin" value="-20" step="1" /><span style="color:#555">–</span>
+    <input type="number" id="d-zmax" value="20"  step="1" />
+  </div>
+  <button class="ctrl-btn" style="margin-top:6px" onclick="applyDomainAndRebuild()">Apply Domain</button>
+  <div style="color:#4a5570;font-size:9px;margin-top:4px;line-height:1.5">
+    Points outside bounds are excluded<br>from rendering. Scene units match<br>the loaded dataset coordinate frame.
+  </div>
+</div>
+
+<!-- ── Dataset info panel ────────────────────────────────────────────────── -->
+<div id="info-panel">
+  <h3>LOADED DATASETS</h3>
+  <div id="ds-list"></div>
+  <hr class="sep" style="margin-top:6px">
+  <h3>ACTIVE METADATA</h3>
+  <div id="meta-list"></div>
+</div>
+
+<!-- ── Left controls ─────────────────────────────────────────────────────── -->
+<div id="controls">
+  <h3>RENDER MODE</h3>
+  <div class="btn-row">
+    <button class="ctrl-btn active" id="btn-basic"    onclick="setRenderMode('basic')">Basic</button>
+    <button class="ctrl-btn"        id="btn-enhanced" onclick="setRenderMode('enhanced')">Enhanced</button>
+  </div>
+
+  <hr class="sep">
+  <h3>SPLAT PARAMETERS</h3>
+  <label>Opacity
+    <input type="range" id="sl-opacity" min="0.02" max="1" step="0.01" value="0.35" />
+    <span class="val-display" id="v-opacity">0.35</span>
+  </label>
+  <label>Scale
+    <input type="range" id="sl-scale" min="0.02" max="0.5" step="0.01" value="0.08" />
+    <span class="val-display" id="v-scale">0.08</span>
+  </label>
+  <label>Elongation
+    <input type="range" id="sl-elong" min="1" max="12" step="0.5" value="5" />
+    <span class="val-display" id="v-elong">5.0</span>
+  </label>
+
+  <hr class="sep">
+  <h3>OVERLAYS</h3>
+  <label class="check-row">
+    <input type="checkbox" id="chk-grid" onchange="toggleGrid(this.checked)" />
+    Reference grid
+  </label>
+  <label class="check-row">
+    <input type="checkbox" id="chk-saturn" onchange="toggleSaturnBody(this.checked)" />
+    Saturn body (schematic)
+  </label>
+  <label class="check-row">
+    <input type="checkbox" id="chk-bviz" onchange="toggleArrows(this.checked)" />
+    B-field vectors (~100)
+  </label>
+  <label class="check-row disabled-row" title="Inferred structure overlay — not yet implemented">
+    <input type="checkbox" disabled />
+    Show inferred structures
+  </label>
+
+  <hr class="sep">
+  <h3>DATASET MERGE</h3>
+  <div class="btn-row">
+    <button class="ctrl-btn active" id="btn-replace" onclick="setMergeMode('replace')">Replace</button>
+    <button class="ctrl-btn"        id="btn-append"  onclick="setMergeMode('append')">Append</button>
+  </div>
+  <div id="dedup-row">
+    <label style="margin-top:3px">Dedup threshold
+      <input type="range" id="sl-dedup" min="0" max="0.2" step="0.01" value="0.05" />
+      <span class="val-display" id="v-dedup">0.05</span>
+    </label>
+  </div>
+
+  <hr class="sep">
+  <h3>ACTIONS</h3>
+  <button class="ctrl-btn" onclick="toggleDomainPanel()">⊞ Domain Settings</button>
+  <button class="ctrl-btn" onclick="toggleInfoPanel()">ℹ Dataset Info</button>
+  <button class="ctrl-btn" onclick="resetCamera()">⟲ Reset Camera</button>
+  <button class="ctrl-btn" onclick="purgeAndReset()">🗑 Purge &amp; Reset</button>
+  <button class="ctrl-btn" onclick="document.getElementById('file-input').click()">📂 Load Dataset</button>
+</div>
+
+<div id="canvas-container"></div>
+
+<!-- ── Three.js (r128) ───────────────────────────────────────────────────── -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+
+<script>
+'use strict';
+
+// ════════════════════════════════════════════════════════════════════════════
+//  CONSTANTS
+// ════════════════════════════════════════════════════════════════════════════
+const MAX_POINTS        = 5000;
+const MEM_WARN_MB       = 400;
+const MEM_CRIT_MB       = 700;
+const TARGET_FPS        = 30;
+const FRAME_INTERVAL_MS = 1000 / TARGET_FPS;
+
+// Saturn physical reference (schematic, not to scale in scene units)
+const SATURN_REQ_SCENE  = 0.55;   // equatorial radius in scene units (schematic)
+const SATURN_OBLATENESS = 0.09796; // (R_eq - R_pol) / R_eq
+
+// Dataset colour palette (RGB 0–1, used when multiple datasets are loaded)
+const DS_PALETTE = [
+  [0.533, 0.753, 0.816],  // #88c0d0 cyan
+  [0.922, 0.796, 0.545],  // #ebcb8b amber
+  [0.639, 0.745, 0.549],  // #a3be8c green
+  [0.706, 0.557, 0.678],  // #b48ead purple
+  [0.816, 0.529, 0.439],  // #d08770 orange
+];
+
+// ════════════════════════════════════════════════════════════════════════════
+//  APPLICATION STATE
+// ════════════════════════════════════════════════════════════════════════════
+let renderMode  = 'basic';    // 'basic' | 'enhanced'
+let mergeMode   = 'replace';  // 'replace' | 'append'
+
+// datasets[i] = { id, label, colorIdx, records[], meta: {} }
+let datasets    = [];
+let datasetSeq  = 0;
+
+// Derived flat array — recomputed on every rebuild
+let activePoints = [];
+
+// Domain bounds (scene units)
+let domain = { xMin:-20, xMax:20, yMin:-20, yMax:20, zMin:-20, zMax:20, active: false };
+
+// Three.js handles
+let renderer, scene, camera, controls;
+let instancedMesh = null;
+let arrowGroup    = null;
+let gridGroup     = null;
+let saturnGroup   = null;
+let lastFrameTime = 0;
+let frameCount    = 0, fpsTimer = 0, currentFPS = 0;
+
+// ════════════════════════════════════════════════════════════════════════════
+//  THREE.JS RENDERER INITIALISATION
+// ════════════════════════════════════════════════════════════════════════════
+function initThree() {
+  const container = document.getElementById('canvas-container');
+
+  renderer = new THREE.WebGLRenderer({
+    antialias: false,
+    powerPreference: 'default',
+    precision: 'mediump',
+  });
+  renderer.setPixelRatio(Math.min(window.devicePixelRatio, 1.5));
+  renderer.setSize(window.innerWidth, window.innerHeight);
+  renderer.setClearColor(0x050510, 1);
+  container.appendChild(renderer.domElement);
+
+  scene = new THREE.Scene();
+  scene.fog = new THREE.FogExp2(0x050510, 0.03);
+
+  camera = new THREE.PerspectiveCamera(55, window.innerWidth / window.innerHeight, 0.01, 500);
+  camera.position.set(4, 3, 12);
+
+  controls = new THREE.OrbitControls(camera, renderer.domElement);
+  controls.enableDamping    = true;
+  controls.dampingFactor    = 0.08;
+  controls.screenSpacePanning = true;
+  controls.minDistance      = 0.5;
+  controls.maxDistance      = 80;
+
+  // World-frame axis indicator
+  const axisHelper = new THREE.AxesHelper(1.5);
+  axisHelper.position.set(-3.5, -6, 0);
+  scene.add(axisHelper);
+
+  // Illumination for MeshPhongMaterial shading
+  scene.add(new THREE.AmbientLight(0xffffff, 0.55));
+  const dir = new THREE.DirectionalLight(0x88c0d0, 0.85);
+  dir.position.set(5, 10, 5);
+  scene.add(dir);
+
+  window.addEventListener('resize', onResize);
+  requestAnimationFrame(renderLoop);
+}
+
+function onResize() {
+  camera.aspect = window.innerWidth / window.innerHeight;
+  camera.updateProjectionMatrix();
+  renderer.setSize(window.innerWidth, window.innerHeight);
+}
+
+// ════════════════════════════════════════════════════════════════════════════
+//  RENDER LOOP — rate-limited to TARGET_FPS
+// ════════════════════════════════════════════════════════════════════════════
+function renderLoop(timestamp) {
+  requestAnimationFrame(renderLoop);
+  const delta = timestamp - lastFrameTime;
+  if (delta < FRAME_INTERVAL_MS) return;
+  lastFrameTime = timestamp - (delta % FRAME_INTERVAL_MS);
+
+  frameCount++;
+  fpsTimer += delta;
+  if (fpsTimer >= 1000) {
+    currentFPS = frameCount;
+    frameCount = 0; fpsTimer = 0;
+    updateHUD(); checkMemory();
+  }
+  controls.update();
+  renderer.render(scene, camera);
+}
+
+// ════════════════════════════════════════════════════════════════════════════
+//  MATERIAL FACTORIES
+// ════════════════════════════════════════════════════════════════════════════
+function makeBasicMaterial(opacity) {
+  return new THREE.MeshPhongMaterial({
+    transparent: true, opacity, depthWrite: false,
+    blending: THREE.AdditiveBlending,
+    side: THREE.DoubleSide, vertexColors: true,
+  });
+}
+
+/**
+ * Enhanced material — MeshPhongMaterial extended via onBeforeCompile to add:
+ *   1. View-dependent alpha: splats are more transparent when viewed end-on
+ *      along the local B-field axis, improving depth legibility.
+ *   2. Fresnel rim term: a subtle blue-tinted edge glow that reinforces
+ *      the tubular geometry without implying radiative emission.
+ *
+ * The enhancement is a perceptual aid only; it does not represent physical
+ * radiative transfer properties of the modelled flux structures.
+ */
+function makeEnhancedMaterial(opacity) {
+  const mat = new THREE.MeshPhongMaterial({
+    transparent: true, opacity, depthWrite: false,
+    blending: THREE.AdditiveBlending,
+    side: THREE.DoubleSide, vertexColors: true,
+  });
+
+  mat.customProgramCacheKey = () => 'enhanced_viewalpha_v2';
+
+  mat.onBeforeCompile = shader => {
+    // ── Vertex shader: add varying and view-dependent alpha computation ───
+    shader.vertexShader = shader.vertexShader.replace(
+      'void main() {',
+      'varying float vViewAlpha;\nvoid main() {'
+    );
+    // Inject after #include <fog_vertex> — position and instanceMatrix are
+    // fully resolved at this point. The local Y axis of each instance
+    // (column 1 of instanceMatrix) encodes the field line direction.
+    shader.vertexShader = shader.vertexShader.replace(
+      '#include <fog_vertex>',
+      `#include <fog_vertex>
+      {
+        #ifdef USE_INSTANCING
+          vec3 _bAxis = normalize(instanceMatrix[1].xyz);
+          vec4 _wPos  = modelMatrix * instanceMatrix * vec4(position, 1.0);
+        #else
+          vec3 _bAxis = vec3(0.0, 1.0, 0.0);
+          vec4 _wPos  = modelMatrix * vec4(position, 1.0);
+        #endif
+        vec3 _vd = normalize(cameraPosition - _wPos.xyz);
+        // Alpha is reduced when the viewing ray aligns with the B-field axis
+        // (end-on view) and increased when the ray is perpendicular (face-on).
+        vViewAlpha = clamp(1.0 - 0.65 * abs(dot(_vd, _bAxis)), 0.15, 1.0);
+      }`
+    );
+
+    // ── Fragment shader: apply alpha modulation + rim glow ─────────────
+    shader.fragmentShader = shader.fragmentShader.replace(
+      'void main() {',
+      'varying float vViewAlpha;\nvoid main() {'
+    );
+    shader.fragmentShader = shader.fragmentShader.replace(
+      'gl_FragColor = vec4( outgoingLight, diffuseColor.a );',
+      `// Fresnel-like rim: power-law falloff on the geometric normal–view angle.
+       // Added as a spectrally blue-shifted ambient term for GS-style depth cuing.
+       // vViewPosition = -mvPosition.xyz, which points FROM vertex TOWARD camera in view space.
+       // normalize(vViewPosition) is therefore the view direction; Fresnel brightens the rim (grazing angle).
+       float _rim = pow(clamp(1.0 - max(dot(normal, normalize(vViewPosition)), 0.0), 0.0, 1.0), 3.5);
+       vec3  _rimGlow = vec3(0.06, 0.10, 0.28) * _rim * 0.35;
+       gl_FragColor = vec4(outgoingLight + _rimGlow, diffuseColor.a * vViewAlpha);`
+    );
+  };
+
+  return mat;
+}
+
+// ════════════════════════════════════════════════════════════════════════════
+//  SCENE CONSTRUCTION
+// ════════════════════════════════════════════════════════════════════════════
+const _dummy = new THREE.Object3D();
+const _color = new THREE.Color();
+const _up    = new THREE.Vector3(0, 1, 0);
+const _Bvec  = new THREE.Vector3();
+
+function buildScene() {
+  disposeInstancedMesh();
+
+  // Merge all dataset records and apply domain filter
+  activePoints = buildActivePoints();
+
+  const n          = activePoints.length;
+  if (n === 0) return;
+
+  const opacity    = parseFloat(document.getElementById('sl-opacity').value);
+  const baseScale  = parseFloat(document.getElementById('sl-scale').value);
+  const elongation = parseFloat(document.getElementById('sl-elong').value);
+  const multiDs    = datasets.length > 1;
+
+  const geo = new THREE.SphereGeometry(1, 4, 3);
+  const mat = renderMode === 'enhanced'
+    ? makeEnhancedMaterial(opacity)
+    : makeBasicMaterial(opacity);
+
+  instancedMesh = new THREE.InstancedMesh(geo, mat, n);
+  instancedMesh.instanceMatrix.setUsage(THREE.StaticDrawUsage);
+  instancedMesh.instanceColor = new THREE.InstancedBufferAttribute(
+    new Float32Array(n * 3), 3
+  );
+
+  for (let i = 0; i < n; i++) {
+    const p = activePoints[i];
+
+    _dummy.position.set(p.x, p.z, p.y);  // Y/Z swap for display convention
+
+    _Bvec.set(p.Bx, p.Bz, p.By).normalize();
+    if (_Bvec.lengthSq() < 1e-10) _Bvec.set(0, 1, 0);
+    _dummy.quaternion.setFromUnitVectors(_up, _Bvec);
+    _dummy.scale.set(baseScale, baseScale * elongation, baseScale);
+    _dummy.updateMatrix();
+    instancedMesh.setMatrixAt(i, _dummy.matrix);
+
+    // Colour: intensity-based grayscale with blue bias, tinted by source
+    // colour when multiple datasets are loaded
+    const g = (p.gray !== undefined ? p.gray : 128) / 255;
+    let r = g * 0.85 + 0.15;
+    let gv = g * 0.90 + 0.10;
+    let b  = g * 0.95 + 0.55;
+
+    if (multiDs && p._dsColorIdx !== undefined) {
+      const dc = DS_PALETTE[p._dsColorIdx % DS_PALETTE.length];
+      // Lerp toward source colour at 40% weight; intensity variation preserved
+      const w = 0.40;
+      r  = r  * (1 - w) + dc[0] * (0.5 + 0.5 * g) * w;
+      gv = gv * (1 - w) + dc[1] * (0.5 + 0.5 * g) * w;
+      b  = b  * (1 - w) + dc[2] * (0.5 + 0.5 * g) * w;
+    }
+
+    _color.setRGB(r, gv, b);
+    instancedMesh.setColorAt(i, _color);
+  }
+
+  instancedMesh.instanceMatrix.needsUpdate = true;
+  instancedMesh.instanceColor.needsUpdate  = true;
+  instancedMesh.frustumCulled = false;
+
+  scene.add(instancedMesh);
+  addStarfield();
+  updateHUD();
+  console.log(`[Renderer] ${n} field line points rendered (${datasets.length} dataset(s)).`);
+}
+
+/**
+ * Assembles the active point list from all loaded datasets.
+ * Applies the spatial domain filter and, if append mode is active with
+ * multiple datasets, applies coordinate-proximity deduplication.
+ */
+function buildActivePoints() {
+  const dedupThreshold = parseFloat(document.getElementById('sl-dedup').value);
+  let all = [];
+
+  for (const ds of datasets) {
+    for (const r of ds.records) {
+      all.push({ ...r, _dsColorIdx: ds.colorIdx });
+    }
+  }
+
+  // Spatial domain filter
+  if (domain.active) {
+    all = all.filter(p =>
+      p.x >= domain.xMin && p.x <= domain.xMax &&
+      p.y >= domain.yMin && p.y <= domain.yMax &&
+      p.z >= domain.zMin && p.z <= domain.zMax
+    );
+  }
+
+  // Deduplication by coordinate proximity (grid-cell quantisation)
+  if (datasets.length > 1 && dedupThreshold > 0) {
+    all = deduplicatePoints(all, dedupThreshold);
+  }
+
+  // Hard ceiling enforced after all filtering
+  if (all.length > MAX_POINTS) {
+    console.warn(`[Constraint] Active point count truncated: ${all.length} → ${MAX_POINTS}.`);
+    all = all.slice(0, MAX_POINTS);
+  }
+
+  return all;
+}
+
+/**
+ * Grid-cell deduplication. Points within `threshold` scene units of an
+ * already-accepted point are discarded. The first-encountered point in
+ * each cell is retained; order is determined by dataset load order.
+ */
+function deduplicatePoints(points, threshold) {
+  const seen = new Set();
+  const inv  = 1.0 / threshold;
+  return points.filter(p => {
+    const key = `${Math.round(p.x * inv)},${Math.round(p.y * inv)},${Math.round(p.z * inv)}`;
+    if (seen.has(key)) return false;
+    seen.add(key); return true;
+  });
+}
+
+function disposeInstancedMesh() {
+  if (instancedMesh) {
+    instancedMesh.geometry.dispose();
+    instancedMesh.material.dispose();
+    scene.remove(instancedMesh);
+    instancedMesh = null;
+  }
+  if (arrowGroup) { scene.remove(arrowGroup); arrowGroup = null; }
+  scene.children
+    .filter(c => c.userData.tag === 'stars')
+    .forEach(c => { c.geometry.dispose(); c.material.dispose(); scene.remove(c); });
+}
+
+// ════════════════════════════════════════════════════════════════════════════
+//  REFERENCE GRID
+// ════════════════════════════════════════════════════════════════════════════
+/**
+ * Adds a reference grid and labelled axes to the scene.
+ *
+ * Grid spacing is 1 scene unit; 20×20 cells are drawn. Axis labels are
+ * implemented as canvas-texture sprites. The grid represents the
+ * coordinate frame of the loaded dataset; physical unit correspondence
+ * depends on the coordinate frame specified in the dataset metadata.
+ */
+function addGrid() {
+  removeGrid();
+  gridGroup = new THREE.Group();
+  gridGroup.userData.tag = 'grid';
+
+  // XZ plane grid (horizontal in display convention — field spreads laterally)
+  const gridXZ = new THREE.GridHelper(20, 20, 0x1a2a3a, 0x111a28);
+  gridXZ.position.y = -6;
+  gridGroup.add(gridXZ);
+
+  // Axis ruler lines
+  const lineMat = new THREE.LineBasicMaterial({ color: 0x2a4a5a, transparent: true, opacity: 0.7 });
+  const mkLine = (a, b) => {
+    const g = new THREE.BufferGeometry().setFromPoints([new THREE.Vector3(...a), new THREE.Vector3(...b)]);
+    return new THREE.Line(g, lineMat);
+  };
+  gridGroup.add(mkLine([-10,0,0],[10,0,0]));  // X axis
+  gridGroup.add(mkLine([0,-10,0],[0,10,0]));  // Y axis (vertical in display)
+  gridGroup.add(mkLine([0,0,-10],[0,0,10]));  // Z axis (depth in display)
+
+  // Axis labels via canvas sprites
+  const labels = [
+    { text:'+X', pos:[11,0,0] }, { text:'+Y', pos:[0,11,0] }, { text:'+Z', pos:[0,0,11] },
+  ];
+  for (const lb of labels) {
+    const sp = makeTextSprite(lb.text, '#2a6a8a');
+    sp.position.set(...lb.pos);
+    gridGroup.add(sp);
+  }
+
+  // Tick marks every 5 units on X axis (scene-unit scale reference)
+  const tickMat = new THREE.LineBasicMaterial({ color: 0x3a6a7a });
+  for (let x = -10; x <= 10; x += 5) {
+    if (x === 0) continue;
+    const tg = new THREE.BufferGeometry().setFromPoints([
+      new THREE.Vector3(x,-0.15,0), new THREE.Vector3(x,0.15,0)
+    ]);
+    gridGroup.add(new THREE.Line(tg, tickMat));
+    const lbl = makeTextSprite(String(x), '#2a5a6a');
+    lbl.scale.set(0.6, 0.3, 1);
+    lbl.position.set(x, -0.5, 0);
+    gridGroup.add(lbl);
+  }
+
+  scene.add(gridGroup);
+}
+
+function removeGrid() {
+  if (!gridGroup) return;
+  gridGroup.traverse(c => {
+    if (c.geometry) c.geometry.dispose();
+    if (c.material) {
+      if (c.material.map) c.material.map.dispose();
+      c.material.dispose();
+    }
+  });
+  scene.remove(gridGroup);
+  gridGroup = null;
+}
+
+function toggleGrid(on) { if (on) addGrid(); else removeGrid(); }
+
+// ════════════════════════════════════════════════════════════════════════════
+//  SATURN BODY REFERENCE
+// ════════════════════════════════════════════════════════════════════════════
+/**
+ * Adds a schematic representation of the Saturn planetary body.
+ *
+ * The body is rendered as a wireframe oblate spheroid scaled to
+ * Saturn's published oblateness (f = 0.09796, IAU 2015 values:
+ * R_eq = 60,268 km, R_pol = 54,364 km). The scene-unit size is
+ * schematic and does not reflect the actual scale of the loaded
+ * dataset unless the dataset uses physical km coordinates.
+ *
+ * References: Archinal et al. (2018), Celest. Mech. Dyn. Astr. 130(3).
+ */
+function addSaturnBody() {
+  removeSaturnBody();
+  saturnGroup = new THREE.Group();
+  saturnGroup.userData.tag = 'saturn';
+
+  const rEq  = SATURN_REQ_SCENE;
+  const rPol = rEq * (1.0 - SATURN_OBLATENESS);
+
+  // Wireframe spheroid
+  const geo = new THREE.SphereGeometry(rEq, 18, 12);
+  geo.scale(1.0, rPol / rEq, 1.0);  // oblate: Y compressed
+  const mat = new THREE.MeshBasicMaterial({
+    color: 0x4a6a8a, wireframe: true, transparent: true, opacity: 0.25,
+  });
+  saturnGroup.add(new THREE.Mesh(geo, mat));
+
+  // Equatorial ring (schematic ring system indicator)
+  const ringGeo = new THREE.RingGeometry(rEq * 1.25, rEq * 2.0, 48);
+  ringGeo.rotateX(Math.PI / 2);
+  const ringMat = new THREE.MeshBasicMaterial({
+    color: 0x3a5a6a, side: THREE.DoubleSide, transparent: true, opacity: 0.12,
+  });
+  saturnGroup.add(new THREE.Mesh(ringGeo, ringMat));
+
+  // Label
+  const lbl = makeTextSprite('Saturn (schematic)', '#3a7a9a');
+  lbl.scale.set(1.4, 0.7, 1);
+  lbl.position.set(0, rPol + 0.4, 0);
+  saturnGroup.add(lbl);
+
+  scene.add(saturnGroup);
+}
+
+function removeSaturnBody() {
+  if (!saturnGroup) return;
+  saturnGroup.traverse(c => {
+    if (c.geometry) c.geometry.dispose();
+    if (c.material) {
+      if (c.material.map) c.material.map.dispose();
+      c.material.dispose();
+    }
+  });
+  scene.remove(saturnGroup);
+  saturnGroup = null;
+}
+
+function toggleSaturnBody(on) { if (on) addSaturnBody(); else removeSaturnBody(); }
+
+// ════════════════════════════════════════════════════════════════════════════
+//  TEXT SPRITE UTILITY
+// ════════════════════════════════════════════════════════════════════════════
+function makeTextSprite(text, colorHex = '#88c0d0') {
+  const canvas = document.createElement('canvas');
+  canvas.width = 192; canvas.height = 64;
+  const ctx = canvas.getContext('2d');
+  ctx.fillStyle = colorHex;
+  ctx.font = 'bold 28px monospace';
+  ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+  ctx.fillText(text, 96, 32);
+  const tex = new THREE.CanvasTexture(canvas);
+  const mat = new THREE.SpriteMaterial({ map: tex, transparent: true, depthWrite: false });
+  const sp  = new THREE.Sprite(mat);
+  sp.scale.set(1.2, 0.4, 1);
+  return sp;
+}
+
+// ════════════════════════════════════════════════════════════════════════════
+//  B-FIELD VECTOR OVERLAY
+// ════════════════════════════════════════════════════════════════════════════
+function buildArrows() {
+  if (arrowGroup) { scene.remove(arrowGroup); arrowGroup = null; }
+  arrowGroup = new THREE.Group();
+  const step = Math.max(1, Math.floor(activePoints.length / 100));
+  const len  = 0.18;
+  for (let i = 0; i < activePoints.length; i += step) {
+    const p   = activePoints[i];
+    const dir = new THREE.Vector3(p.Bx, p.Bz, p.By).normalize();
+    const ori = new THREE.Vector3(p.x,  p.z,  p.y);
+    arrowGroup.add(new THREE.ArrowHelper(dir, ori, len, 0x88c0d0, len*0.4, len*0.25));
+  }
+  scene.add(arrowGroup);
+}
+
+function removeArrows() {
+  if (arrowGroup) { scene.remove(arrowGroup); arrowGroup = null; }
+}
+
+function toggleArrows(on) {
+  if (!on) { removeArrows(); return; }
+  if (activePoints.length > 0) buildArrows();
+}
+
+// ════════════════════════════════════════════════════════════════════════════
+//  BACKGROUND STAR FIELD
+// ════════════════════════════════════════════════════════════════════════════
+function addStarfield() {
+  const N   = 800;
+  const pos = new Float32Array(N * 3);
+  for (let i = 0; i < N * 3; i++) pos[i] = (Math.random() - 0.5) * 120;
+  const geo = new THREE.BufferGeometry();
+  geo.setAttribute('position', new THREE.BufferAttribute(pos, 3));
+  const mat   = new THREE.PointsMaterial({ color: 0x4a6080, size: 0.12, sizeAttenuation: true });
+  const stars = new THREE.Points(geo, mat);
+  stars.userData.tag = 'stars';
+  scene.add(stars);
+}
+
+// ════════════════════════════════════════════════════════════════════════════
+//  DATA INGESTION AND METADATA EXTRACTION
+// ════════════════════════════════════════════════════════════════════════════
+/**
+ * Ingests a raw JSON string as a new field line dataset.
+ *
+ * If mergeMode is 'replace', the existing dataset store is cleared before
+ * the new records are added. If mergeMode is 'append', the new records are
+ * added alongside existing data; deduplication is applied at render time.
+ *
+ * Metadata records (source === "meta") are extracted and stored separately;
+ * they are not forwarded to the renderer.
+ */
+function ingestJSON(raw, filename) {
+  let parsed;
+  try { parsed = JSON.parse(raw); }
+  catch (e) { showError('JSON parse error: ' + e.message); return; }
+
+  if (!Array.isArray(parsed) || parsed.length === 0) {
+    showError('Invalid dataset: a non-empty array is expected.'); return;
+  }
+
+  // Separate metadata header record from field line records
+  const metaRecord = parsed.find(r => r.source === 'meta') || null;
+  let records = parsed.filter(r => r.source !== 'meta');
+
+  if (records.length === 0) {
+    showError('Dataset contains no renderable field line records.'); return;
+  }
+
+  // Validate required fields on the first record
+  const req = ['x','y','z','Bx','By','Bz'];
+  if (req.some(k => records[0][k] === undefined)) {
+    showError(`Record missing required field(s): ${req.join(', ')}`); return;
+  }
+
+  if (records.length > MAX_POINTS) {
+    console.warn(`[Constraint] Dataset truncated: ${records.length} → ${MAX_POINTS} points.`);
+    records = records.slice(0, MAX_POINTS);
+  }
+
+  // Assign a colour index based on insertion order
+  const colorIdx = datasetSeq % DS_PALETTE.length;
+  const label    = metaRecord?.source_label || filename || `Dataset ${datasetSeq + 1}`;
+
+  const ds = {
+    id: datasetSeq++,
+    label,
+    colorIdx,
+    records,
+    meta: buildMeta(metaRecord, records, filename),
+  };
+
+  if (mergeMode === 'replace') {
+    datasets = [ds];
+  } else {
+    datasets.push(ds);
+  }
+
+  buildScene();
+  updateInfoPanel();
+  document.getElementById('load-overlay').style.display = 'none';
+  document.getElementById('info-panel').style.display   = 'block';
+}
+
+/**
+ * Constructs a standardised metadata object from the JSON metadata record
+ * and basic statistics derived from the record array.
+ *
+ * Fields conform to the v2 schema:
+ *   source, acquisition_date, coord_units, field_units,
+ *   planetary_reference, domain_scale, measured (bool)
+ */
+function buildMeta(metaRecord, records, filename) {
+  const m = metaRecord || {};
+  const intensities = records.map(r => r.intensity || 0);
+  const iMax = Math.max(...intensities);
+  const iMean = intensities.reduce((a,b) => a+b, 0) / intensities.length;
+
+  return {
+    source:         m.source_label  || filename  || 'Unknown',
+    date:           m.date          || 'Unknown',
+    coord_units:    m.coord_units   || 'scene units (unscaled)',
+    field_units:    m.field_units   || 'arbitrary units',
+    planet_ref:     m.planetary_ref || 'Unspecified',
+    domain_scale:   m.domain_scale  || 'Unspecified',
+    measured:       m.measured      !== undefined ? m.measured : false,
+    record_count:   records.length,
+    intensity_max:  iMax.toFixed(2),
+    intensity_mean: iMean.toFixed(2),
+    data_type:      m.data_type     || (m.measured ? 'Measured' : 'Synthetic / inferred'),
+  };
+}
+
+// ════════════════════════════════════════════════════════════════════════════
+//  SPATIAL DOMAIN BOUNDING BOX
+// ════════════════════════════════════════════════════════════════════════════
+const DOMAIN_PRESETS = {
+  saturn: { xMin:-15, xMax:15, yMin:-15, yMax:15, zMin:-15, zMax:15 },
+  solar:  { xMin:-4,  xMax:4,  yMin:-4,  yMax:4,  zMin:-4,  zMax:4  },
+  wide:   { xMin:-30, xMax:30, yMin:-30, yMax:30, zMin:-30, zMax:30 },
+  none:   null,
+};
+
+function applyDomainPreset(key) {
+  const preset = DOMAIN_PRESETS[key];
+  if (!preset) {
+    domain.active = false;
+  } else {
+    Object.assign(domain, preset, { active: true });
+    document.getElementById('d-xmin').value = preset.xMin;
+    document.getElementById('d-xmax').value = preset.xMax;
+    document.getElementById('d-ymin').value = preset.yMin;
+    document.getElementById('d-ymax').value = preset.yMax;
+    document.getElementById('d-zmin').value = preset.zMin;
+    document.getElementById('d-zmax').value = preset.zMax;
+  }
+  if (datasets.length > 0) buildScene();
+}
+
+function applyDomainAndRebuild() {
+  domain.xMin = parseFloat(document.getElementById('d-xmin').value);
+  domain.xMax = parseFloat(document.getElementById('d-xmax').value);
+  domain.yMin = parseFloat(document.getElementById('d-ymin').value);
+  domain.yMax = parseFloat(document.getElementById('d-ymax').value);
+  domain.zMin = parseFloat(document.getElementById('d-zmin').value);
+  domain.zMax = parseFloat(document.getElementById('d-zmax').value);
+  domain.active = true;
+  if (datasets.length > 0) buildScene();
+}
+
+// ════════════════════════════════════════════════════════════════════════════
+//  RENDER MODE AND MERGE MODE TOGGLES
+// ════════════════════════════════════════════════════════════════════════════
+function setRenderMode(mode) {
+  renderMode = mode;
+  document.getElementById('btn-basic').classList.toggle('active', mode === 'basic');
+  document.getElementById('btn-enhanced').classList.toggle('active', mode === 'enhanced');
+  document.getElementById('render-mode-badge').textContent = mode === 'enhanced' ? 'Enhanced' : 'Basic';
+  if (datasets.length > 0) buildScene();
+}
+
+function setMergeMode(mode) {
+  mergeMode = mode;
+  document.getElementById('btn-replace').classList.toggle('active', mode === 'replace');
+  document.getElementById('btn-append').classList.toggle('active', mode === 'append');
+}
+
+// ════════════════════════════════════════════════════════════════════════════
+//  INTERACTIVE CONTROLS — slider bindings
+// ════════════════════════════════════════════════════════════════════════════
+function bindControls() {
+  // Opacity — hot-update material directly; no mesh rebuild required
+  document.getElementById('sl-opacity').addEventListener('input', e => {
+    const v = parseFloat(e.target.value);
+    document.getElementById('v-opacity').textContent = v.toFixed(2);
+    if (instancedMesh) instancedMesh.material.opacity = v;
+  });
+
+  // Scale and elongation — require full instanced mesh reconstruction
+  for (const id of ['sl-scale', 'sl-elong']) {
+    document.getElementById(id).addEventListener('change', () => {
+      if (datasets.length > 0) buildScene();
+    });
+    document.getElementById(id).addEventListener('input', e => {
+      const display = id === 'sl-scale' ? 'v-scale' : 'v-elong';
+      document.getElementById(display).textContent =
+        parseFloat(e.target.value).toFixed(id === 'sl-scale' ? 2 : 1);
+    });
+  }
+
+  // Dedup threshold label update
+  document.getElementById('sl-dedup').addEventListener('input', e => {
+    document.getElementById('v-dedup').textContent = parseFloat(e.target.value).toFixed(2);
+  });
+}
+
+// ════════════════════════════════════════════════════════════════════════════
+//  PANEL TOGGLES
+// ════════════════════════════════════════════════════════════════════════════
+function toggleDomainPanel() {
+  const p = document.getElementById('domain-panel');
+  p.style.display = p.style.display === 'block' ? 'none' : 'block';
+}
+
+function toggleInfoPanel() {
+  const p = document.getElementById('info-panel');
+  p.style.display = p.style.display === 'block' ? 'none' : 'block';
+}
+
+function updateInfoPanel() {
+  // Dataset list
+  const dsList = document.getElementById('ds-list');
+  dsList.innerHTML = '';
+  for (const ds of datasets) {
+    const dc  = DS_PALETTE[ds.colorIdx % DS_PALETTE.length];
+    const hex = '#' + dc.map(v => Math.round(v*255).toString(16).padStart(2,'0')).join('');
+    const row = document.createElement('div');
+    row.className = 'ds-entry';
+    row.innerHTML = `<div class="ds-swatch" style="background:${hex}"></div>
+      <span style="color:#8a95aa;flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap"
+        title="${ds.meta.source}">${ds.meta.source}</span>
+      <span style="color:#a3be8c">${ds.records.length}</span>`;
+    dsList.appendChild(row);
+  }
+
+  // Metadata from most recently loaded dataset
+  const latest = datasets[datasets.length - 1];
+  if (!latest) return;
+  const m = latest.meta;
+  const metaList = document.getElementById('meta-list');
+  metaList.innerHTML = '';
+  const rows = [
+    ['Source',      m.source],
+    ['Date',        m.date],
+    ['Coord units', m.coord_units],
+    ['Field units', m.field_units],
+    ['Planet ref',  m.planet_ref],
+    ['Data type',   m.data_type],
+    ['Points',      m.record_count],
+    ['|B| max',     m.intensity_max],
+    ['|B| mean',    m.intensity_mean],
+  ];
+  for (const [k, v] of rows) {
+    const d = document.createElement('div');
+    d.className = 'info-row';
+    d.innerHTML = `<span>${k}</span><span class="info-val">${v}</span>`;
+    metaList.appendChild(d);
+  }
+
+  // Update HUD meta badge
+  const mb = document.getElementById('meta-badge');
+  mb.textContent = m.source;
+  mb.style.display = 'inline-block';
+}
+
+// ════════════════════════════════════════════════════════════════════════════
+//  CAMERA AND MEMORY MANAGEMENT
+// ════════════════════════════════════════════════════════════════════════════
+function resetCamera() {
+  camera.position.set(4, 3, 12);
+  controls.target.set(0, 0, 0);
+  controls.update();
+}
+
+function purgeAndReset() {
+  disposeInstancedMesh();
+  removeGrid(); removeSaturnBody();
+  datasets = []; activePoints = [];
+  renderer.renderLists.dispose();
+  renderer.info.reset();
+  if (window.gc) window.gc();
+  document.getElementById('stats-pts').textContent    = 'Points: —';
+  document.getElementById('meta-badge').style.display = 'none';
+  document.getElementById('info-panel').style.display = 'none';
+  document.getElementById('load-overlay').style.display = 'flex';
+  document.getElementById('mem-warning').style.display  = 'none';
+  document.getElementById('chk-grid').checked   = false;
+  document.getElementById('chk-saturn').checked = false;
+  document.getElementById('chk-bviz').checked   = false;
+  console.log('[Memory] Scene disposed. GPU resources released.');
+}
+
+function updateHUD() {
+  const total = datasets.reduce((s, d) => s + d.records.length, 0);
+  document.getElementById('stats-pts').textContent =
+    `Points: ${activePoints.length.toLocaleString()} / ${total.toLocaleString()}`;
+  document.getElementById('stats-fps').textContent = `FPS: ${currentFPS}`;
+  if (performance.memory) {
+    const mb = (performance.memory.usedJSHeapSize / 1048576).toFixed(0);
+    document.getElementById('stats-mem').textContent = `MEM: ${mb} MB`;
+  }
+}
+
+function checkMemory() {
+  if (!performance.memory) return;
+  const mb   = performance.memory.usedJSHeapSize / 1048576;
+  const warn = document.getElementById('mem-warning');
+  if (mb > MEM_CRIT_MB) {
+    warn.textContent = `Heap critical: ${mb.toFixed(0)} MB — disposing scene.`;
+    warn.style.display = 'block';
+    setTimeout(purgeAndReset, 1500);
+  } else if (mb > MEM_WARN_MB) {
+    warn.textContent = `Heap elevated: ${mb.toFixed(0)} MB. Consider Purge & Reset.`;
+    warn.style.display = 'block';
+  } else {
+    warn.style.display = 'none';
+  }
+}
+
+function showError(msg) {
+  const el = document.getElementById('error-msg');
+  el.textContent = '⚠ ' + msg;
+  el.style.display = 'block';
+}
+
+// ════════════════════════════════════════════════════════════════════════════
+//  FILE I/O
+// ════════════════════════════════════════════════════════════════════════════
+document.getElementById('file-input').addEventListener('change', e => {
+  const file = e.target.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload  = ev => ingestJSON(ev.target.result, file.name);
+  reader.onerror = ()  => showError('File read error.');
+  reader.readAsText(file);
+  e.target.value = '';
+});
+
+const dropZone = document.getElementById('drop-zone');
+['dragenter','dragover'].forEach(ev =>
+  dropZone.addEventListener(ev, e => { e.preventDefault(); dropZone.classList.add('drag-over'); }));
+['dragleave','drop'].forEach(ev =>
+  dropZone.addEventListener(ev, e => { e.preventDefault(); dropZone.classList.remove('drag-over'); }));
+dropZone.addEventListener('drop', e => {
+  const file = e.dataTransfer.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = ev => ingestJSON(ev.target.result, file.name);
+  reader.readAsText(file);
+});
+
+// ════════════════════════════════════════════════════════════════════════════
+//  INITIALISATION
+// ════════════════════════════════════════════════════════════════════════════
+initThree();
+bindControls();
+</script>
+</body>
+</html>
