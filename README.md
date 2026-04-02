@@ -1,6 +1,13 @@
 # AstroSplat-Browser-native-volumetric-visualization-for-astrophysical-vector-fields — Prototype v2.0
 
+# AstroSplat
+
 [![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.19377621.svg)](https://doi.org/10.5281/zenodo.19377621)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
+[![Status](https://img.shields.io/badge/Status-Prototype-informational.svg)]()
+[![Python](https://img.shields.io/badge/Python-3.9%2B-blue.svg)]()
+
+Browser-native volumetric visualization for astrophysical vector fields.
 
 A browser-native, memory-constrained prototype for three-dimensional
 visualisation of synthetic and observational planetary magnetic field
