@@ -1,4 +1,5 @@
 # AstroSplat-Browser-native-volumetric-visualization-for-astrophysical-vector-fields — Prototype v2.0
+
 [![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.19377621.svg)](https://doi.org/10.5281/zenodo.19377621)
 
 A browser-native, memory-constrained prototype for three-dimensional
@@ -298,5 +299,5 @@ If you use AstroSplat in research, teaching, outreach, or derivative work,
 please cite the repository release:
 
 Figueiredo, V. M. F. (2026). *AstroSplat: Browser-native volumetric
-visualization for astrophysical vector fields* (v0.1.0) [Computer software].
+visualization for astrophysical vector fields* (v0.1.0) [win64 10/11.
 Zenodo. https://doi.org/10.5281/zenodo.19377621
