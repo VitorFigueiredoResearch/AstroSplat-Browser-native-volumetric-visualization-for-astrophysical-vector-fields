@@ -1,5 +1,5 @@
 # AstroSplat-Browser-native-volumetric-visualization-for-astrophysical-vector-fields — Prototype v2.0
-[![DOI](https://zenodo.org/badge/DOI/REPLACE_WITH_DOI.svg)](https://doi.org/REPLACE_WITH_DOI)
+[![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.19377621.svg)](https://doi.org/10.5281/zenodo.19377621)
 
 A browser-native, memory-constrained prototype for three-dimensional
 visualisation of synthetic and observational planetary magnetic field
@@ -298,4 +298,5 @@ If you use AstroSplat in research, teaching, outreach, or derivative work,
 please cite the repository release:
 
 Figueiredo, V. M. F. (2026). *AstroSplat: Browser-native volumetric
-visualization for astrophysical vector fields* (v0.1.0) (windows 10/11) 
+visualization for astrophysical vector fields* (v0.1.0) [Computer software].
+Zenodo. https://doi.org/10.5281/zenodo.19377621
