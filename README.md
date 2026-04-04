@@ -285,6 +285,21 @@ Zenodo. [https://doi.org/10.5281/zenodo.19377621](https://doi.org/10.5281/zenodo
 
 MIT License
 
+## Brand and trademark notice
+
+The **AstroSplat** name, logo, slogan, and related branding identify the official project and are not licensed under the MIT License unless explicitly stated otherwise.
+
+The MIT License applies to the repository’s **source code**. If you fork or redistribute modified versions of the software, please use your own project name and branding unless you have permission to use the official AstroSplat identity.
+
+You are welcome to refer to AstroSplat factually, for example:
+
+- “Based on AstroSplat”
+- “Derived from AstroSplat”
+- citations, reviews, comparisons, and academic references
+
+Please do not use the AstroSplat name or logo in a way that implies official status, endorsement, or authorship of a modified fork.
+
+See [TRADEMARK.md](TRADEMARK.md) for details.
 
 
 
