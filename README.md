@@ -1,18 +1,51 @@
-# AstroSplat-Browser-native-volumetric-visualization-for-astrophysical-vector-fields — Prototype v2.0
-
 # AstroSplat
+
+**Where data becomes structure**
 
 [![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.19377621.svg)](https://doi.org/10.5281/zenodo.19377621)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
-[![Status](https://img.shields.io/badge/Status-Prototype-informational.svg)]()
+[![Status](https://img.shields.io/badge/Status-v1.1.1-informational.svg)]()
 [![Python](https://img.shields.io/badge/Python-3.9%2B-blue.svg)]()
 
-Browser-native volumetric visualization for astrophysical vector fields.
+AstroSplat is a browser-native splat-based visualisation tool for astrophysical vector-field datasets. It is inspired by the perceptual strengths of splat rendering, but adapted for scientific field data rather than photogrammetric 3D reconstruction.
 
-A browser-native, memory-constrained prototype for three-dimensional
-visualisation of synthetic and observational planetary magnetic field
-line datasets. All computation runs in-browser via Three.js (r128);
-no server, no build step, no external dependencies beyond a CDN import.
+This release marks the **first stable visual milestone** of the viewer: corrected polarity-colour rendering, dual-layer splat realism, adjustable halo strength, reference-shape overlays with transform controls, and animated directional pulse for B-field vectors.
+
+---
+
+## What AstroSplat does
+
+AstroSplat renders vector-field sample points as oriented volumetric splats in real time inside a browser, using Three.js and no backend.
+
+It is designed to help users explore:
+
+- magnetic-field structure
+- polarity patterns in a chosen component basis
+- volumetric organisation of sparse or structured field samples
+- comparative visualisation across synthetic and future observational datasets
+
+AstroSplat is a visualisation tool. It does **not** infer physical truth beyond the loaded data unless such layers are explicitly labeled as inferred.
+
+---
+
+## Current milestone: v1.1.1
+
+This version includes:
+
+- corrected polarity-colour rendering for selected field-component sign
+- Basic and Enhanced render modes
+- dual-layer splat realism with adjustable halo strength
+- B-field vector overlay with optional **Directional Pulse**
+- reference-shape overlay with:
+  - Sphere / Torus options
+  - scale control
+  - anchor position controls
+  - rotation controls
+- collapsible control panel
+- spatial-domain clipping and reset controls
+- append/replace dataset merge workflow
+- metadata panel and dataset identity display
+- browser-native operation with no installation or build step
 
 ---
 
@@ -20,291 +53,239 @@ no server, no build step, no external dependencies beyond a CDN import.
 
 | File | Purpose |
 |---|---|
-| `field_visualizer.html` | Main visualizer — open directly in a browser |
+| `AstroSplat.html` | Main browser viewer |
 | `generate_magnetosphere.py` | Generates the Saturn polar flux tube dataset |
-| `solar_to_splats.py` | Fetches or synthesises a solar active region magnetogram dataset |
-| `generate_earth_bowshock.py` | Generates the Earth magnetopause / bow shock dataset |
+| `solar_to_splats.py` | Fetches or synthesises a solar active region dataset |
+| `generate_earth_bowshock.py` | Generates the Earth magnetopause/bow shock dataset |
 | `memory_guard.py` | JSON compression and RAM monitoring utility |
-| `magnetosphere_data.json` | Saturn polar flux tube — 4,000 points, 8 filaments |
-| `magnetosphere_data_mini.json` | Compressed variant — 3-decimal float precision |
-| `solar_active_region.json` | Synthetic solar active region — 3,600 points (60×60 grid) |
-| `earth_bowshock.json` | Synthetic Earth magnetopause + bow shock — 1,456 points |
+| `magnetosphere_data.json` | Saturn polar flux tube dataset |
+| `magnetosphere_data_mini.json` | Reduced-precision Saturn variant |
+| `solar_active_region.json` | Synthetic solar active region dataset |
+| `earth_bowshock.json` | Synthetic Earth bow shock/magnetosphere dataset |
 
 ---
 
-## Quick Start
+## Quick start
 
-1. Open `field_visualizer.html` in any modern browser (Chrome, Firefox, Edge).
-2. Drag a dataset JSON file onto the drop zone, or click to browse.
-3. Use the left-hand control panel to adjust rendering and overlays.
+1. Open `AstroSplat.html` in a modern browser.
+2. Load a dataset JSON file.
+3. Use the left-hand controls to explore rendering, polarity, overlays, and reference geometry.
 
 No installation required.
 
 ---
 
-## Capabilities
+## Viewer capabilities
 
-### Rendering
+### Render modes
 
-Two render modes are available via the **Basic / Enhanced** toggle:
+AstroSplat currently includes two viewer modes:
 
-- **Basic** — `MeshPhongMaterial` with additive blending. Each field line
-  point is represented as a low-polygon ellipsoid aligned to the local B-field
-  direction. Colour is intensity-mapped grayscale with a blue-tinted floor.
+- **Basic**  
+  Simpler splat presentation intended for clarity and speed.
 
-- **Enhanced** — The same geometry, extended via `onBeforeCompile` shader
-  injection to add: (a) view-dependent alpha, which reduces opacity when
-  the ellipsoid is viewed end-on along its B-field axis, improving depth
-  legibility; (b) a Fresnel-like rim glow term that reinforces the tubular
-  geometry at grazing angles. These effects are perceptual aids only and do
-  not represent physical emission or radiative transfer properties.
+- **Enhanced**  
+  A more perceptual mode with stronger depth cues and a richer volumetric feel.
 
-Rendering is rate-limited to 30 FPS and uses a hard ceiling of 5,000 points
-to maintain stable performance on integrated GPUs.
+Both modes preserve the same underlying field data. Enhanced mode is a perceptual aid, not a physical radiative model.
+## Screenshots
 
-### Reference Overlays
+### Solar active region
+![Solar active region](figures/v1.1.1/solar_active_region.PNG)
 
-- **Reference grid** — a 20×20 scene-unit grid with labelled X/Y/Z axes
-  and tick marks. Units correspond to the coordinate frame of the loaded
-  dataset (see metadata). Toggle via the control panel.
+### Earth bow shock
+![Earth bow shock](figures/v1.1.1/earth_bowshock.PNG)
 
-- **Saturn body (schematic)** — a wireframe oblate spheroid representing
-  Saturn's planetary body at correct oblateness (f = 0.09796, Archinal et al.
-  2018), sized at a schematic 0.55 scene units equatorial radius. This is
-  not to scale against field data unless the dataset uses correctly scaled
-  physical coordinates. Includes a schematic ring system indicator.
+### Magnetosphere data
+![Magnetosphere data](figures/v1.1.1/magnetosphere_data.PNG)
+### Polarity rendering
 
-### Spatial Domain Clipping
+AstroSplat can colour the scene by the sign of a selected field component basis:
 
-The **Domain Settings** panel provides a bounding box filter with four
-presets:
+- `Bx`
+- `By`
+- `Bz`
 
-| Preset | Domain [scene units] | Intended use |
-|---|---|---|
-| Saturn | ±15 | Saturn magnetospheric dataset |
-| Solar AR | ±4 | Solar active region (60×60 grid) |
-| Wide | ±30 | Large-scale or high-altitude datasets |
-| None | (disabled) | No clipping — all points rendered |
+This means polarity currently answers:
 
-Custom min/max values can be entered manually. Points outside the domain
-are excluded from the renderer at each rebuild; the source data are not
-modified. A warning is printed to the browser console if the domain
-truncates a significant fraction of the loaded dataset.
+> Is the selected component positive or negative at this point in the chosen coordinate frame?
 
-### Multi-Dataset Merge
+It does **not** yet mean full magnetic topology, connectivity class, or radial polarity unless such modes are added in future versions.
 
-The **Dataset Merge** section controls how successive file loads interact:
+### Halo realism
 
-- **Replace** (default) — discards all existing datasets and renders the
-  newly loaded file alone.
+A dual-layer splat presentation is available:
 
-- **Append** — retains all previously loaded datasets and renders them
-  simultaneously. Each dataset is assigned a distinct source colour from a
-  five-colour palette, blended with the point's intensity-based grayscale
-  at 40% weight. Datasets retain their individual identities in the
-  **Dataset Info** panel.
+- inner core = primary measured structure
+- outer halo = softer support shell
 
-When Append mode is active with multiple datasets, a coordinate-proximity
-deduplication pass is applied at render time. Points within `threshold`
-scene units of an already-accepted point (first-encountered, by load order)
-are discarded. The default threshold is 0.05 scene units. This prevents
-GPU overdraw artifacts at dataset boundaries without modifying the source
-records.
+The halo can be tuned with a **Halo Strength** slider and reduced to zero if a cleaner scientific view is preferred.
 
-The deduplication step is a spatial filter only; it does not remove
-physically distinct points that happen to be co-located in different
-coordinate frames. Datasets recorded in different physical unit systems
-must be normalised to a common frame before being merged for the
-deduplication to have physical meaning.
+### B-field vectors
 
-### Metadata Display
+AstroSplat can display B-field direction vectors over the splat field.
 
-When a dataset JSON includes a metadata header record
-(`"source": "meta"`), its fields are displayed in the **Dataset Info**
-panel. The following fields are recognised:
+The viewer also includes **Directional Pulse**, a small local animation that helps the eye read direction. This is a visual cue only, not a time-evolution simulation.
 
-| Field | Description |
-|---|---|
-| `source_label` | Short identifier string for the dataset |
-| `date` | Acquisition or generation date |
-| `coord_units` | Physical units of the x, y, z coordinates |
-| `field_units` | Physical units of Bx, By, Bz |
-| `planetary_ref` | Planetary body and coordinate frame |
-| `domain_scale` | Approximate spatial extent of the dataset |
-| `measured` | Boolean — `true` if derived from real observations |
-| `data_type` | Free-text description of the data provenance |
+### Reference overlays
 
-Fields not present in the JSON are displayed as "Unknown" or "Unspecified".
-The metadata record is filtered from the render set at ingestion; it does
-not contribute a visible point to the scene.
+Reference overlays include:
+
+- reference grid
+- reference shape toggle
+- **Sphere**
+- **Torus**
+- reference shape scale
+- anchor position controls (`X`, `Y`, `Z`)
+- rotation controls (`Rot X`, `Rot Y`, `Rot Z`)
+
+These are visual alignment aids only and should not be interpreted as physically exact body models unless explicitly stated by the dataset.
+
+### Spatial domain controls
+
+The spatial-domain panel supports:
+
+- clipping bounds
+- preset-style domain workflow
+- manual min/max control
+- reset behaviour
+
+This allows users to isolate regions of interest without modifying the source dataset.
+
+### Dataset workflow
+
+AstroSplat supports:
+
+- **Replace** mode
+- **Append** mode
+- coordinate-proximity dedup threshold for merged scenes
+
+Append mode is useful for exploratory multi-dataset comparison, but physical interpretation requires compatible coordinate systems and scales.
 
 ---
 
-## Dataset JSON Schema
+## Included datasets
 
-Each record in a compliant dataset JSON array must contain the following
-fields. Additional fields are preserved but not used by the renderer.
+### `magnetosphere_data.json`
+Synthetic Saturn polar flux tube dataset used as a primary structural test scene.
+
+### `solar_active_region.json`
+Synthetic solar active-region dataset for testing field organisation near a photospheric surface.
+
+### `earth_bowshock.json`
+Synthetic Earth bow shock / dipole-style field dataset useful for polarity and reference-shape comparisons.
+
+All included example datasets should currently be treated as synthetic or model-derived visualization datasets unless explicitly marked otherwise.
+
+---
+
+## Dataset JSON schema
+
+Each point record should contain at least:
 
 ```json
 {
-  "x":         0.0,
-  "y":         0.0,
-  "z":         0.0,
-  "Bx":        0.0,
-  "By":        0.0,
-  "Bz":        0.0,
+  "x": 0.0,
+  "y": 0.0,
+  "z": 0.0,
+  "Bx": 0.0,
+  "By": 0.0,
+  "Bz": 0.0,
   "intensity": 0.0,
-  "gray":      128
+  "gray": 128
 }
-```
+````
 
-- `x`, `y`, `z`: position in the dataset's coordinate frame. Units are
-  specified in the metadata record; the renderer treats them as scene units
-  without conversion.
-- `Bx`, `By`, `Bz`: magnetic field vector components in the same frame.
-  The renderer normalises these internally to compute ellipsoid orientation.
-- `intensity`: scalar field magnitude, used only for metadata statistics.
-- `gray`: 8-bit grayscale luminance index [0, 255], used for per-point
-  colouring. If absent, defaults to 128 (mid-grey).
+Optional metadata/header records may also be included depending on the dataset format used by the viewer.
 
-A metadata header record with `"source": "meta"` may optionally be placed
-as the first element of the array.
+Current viewer behaviour uses:
+
+* position for placement
+* vector components for orientation and polarity basis
+* grayscale/intensity-related fields for non-polarity default rendering paths where applicable
 
 ---
 
-## Scale Handling
+## Interpretation notes
 
-Coordinates are loaded and rendered without unit conversion. The
-visualizer treats all values as dimensionless scene units. Physical
-scale correspondence requires the user to confirm that the dataset's
-coordinate frame matches the reference frame implied by any overlay:
+AstroSplat is designed to be visually expressive **without inventing confidence that the data do not support**.
 
-- The Saturn reference body overlay is schematic only. It is sized at
-  0.55 scene units equatorial radius regardless of the loaded dataset's
-  physical scale. It conveys body shape and oblateness, not scale.
+Important distinctions:
 
-- The reference grid is labelled in scene units. When the Saturn polar
-  flux tube dataset (`magnetosphere_data.json`) is loaded, one scene unit
-  corresponds roughly to one Saturn radius (informal convention of the
-  generator script); this is not enforced or verified by the visualizer.
-
-- The Earth bow shock dataset (`earth_bowshock.json`) uses R_E (Earth radii)
-  as the coordinate unit. The domain preset "Saturn" (±15) is appropriate
-  for this dataset as well, given its ±16 R_E spatial extent.
-
----
-
-## Included Datasets
-
-### `magnetosphere_data.json` — Saturn Polar Flux Tube
-
-- **Source**: fully synthetic (centred dipole Euler integration)
-- **Generator**: `generate_magnetosphere.py`
-- **Points**: 4,000 (8 filaments × 500 points each)
-- **Physical model**: centred dipole field, Saturn axial alignment
-- **Coordinate units**: informal Saturn radii (scene units)
-- **Use**: primary prototype dataset; tests single-file load and
-  Saturn-appropriate render settings
-
-### `solar_active_region.json` — Synthetic Solar Active Region
-
-- **Source**: synthetic (Gaussian bipole + potential field extrapolation,
-  Nakagawa & Raadu 1972; Alissandrakis 1981)
-- **Generator**: `solar_to_splats.py --mode synthetic`
-- **Points**: 3,600 (60×60 photospheric grid)
-- **Physical model**: potential field photosphere (FFT Green's function);
-  Bz from magnetogram, Bx/By extrapolated
-- **Coordinate units**: pixel-scale scene units
-- **Use**: tests non-dipole field topology; Solar AR domain preset applies
-
-### `earth_bowshock.json` — Earth Magnetopause / Bow Shock
-
-- **Source**: synthetic (empirical parametrisation)
-- **Generator**: `generate_earth_bowshock.py`
-- **Points**: 1,456 (magnetospheric dipole lines + magnetosheath draped field)
-- **Physical model**: Shue et al. (1997) magnetopause, Farris & Russell (1994)
-  bow shock, centred tilted dipole (IGRF mean tilt 11.5°)
-- **Coordinate units**: R_E (Earth radii)
-- **Use**: second example dataset for append-mode testing; provides a
-  structurally different field topology for multi-dataset merge
+* **Measured / source structure** should remain primary.
+* **Perceptual enhancements** such as halo, depth cues, and directional pulse are visual aids.
+* **Polarity colouring** currently represents component sign, not a full topological classification.
+* **Reference shapes** are alignment guides, not claims of exact physical scale.
+* Future inferred layers should always be clearly labelled as inferred.
 
 ---
 
 ## Limitations
 
-The following limitations apply to the current prototype and should be
-considered when interpreting visualisation outputs:
+1. **Not Gaussian Splatting in the strict photogrammetric sense.**
+   AstroSplat is a splat-based scientific viewer inspired by the visual strengths of splat rendering, but it is not a direct implementation of Gaussian Splatting for scanned 3D scenes.
 
-1. **All datasets are synthetic.** No observational magnetometer or
-   remote-sensing data are used. Field line geometry reflects the
-   mathematical model, not any spacecraft measurement.
+2. **Current polarity modes are component-based.**
+   They are tied to `Bx`, `By`, or `Bz` sign in the chosen coordinate frame.
 
-2. **Ellipsoidal splats are a proxy only.** Each field line sample point is
-   represented as a low-polygon ellipsoid aligned to the local B-vector.
-   This is a visualisation convention, not a physically meaningful geometric
-   primitive for magnetic structures.
+3. **Enhanced mode is perceptual.**
+   It improves the structure legibility but should not be interpreted as physical emission or plasma radiative behaviour.
 
-3. **Enhanced rendering is perceptual, not physical.** View-dependent alpha
-   and the Fresnel rim glow are visual depth cues; they do not represent
-   the emissive, absorptive, or scattering properties of the modelled plasma.
+4. **Reference shapes are schematic.**
+   They assist orientation and comparison, but are not automatic physical fits.
 
-4. **No field-line connectivity is enforced.** Points are rendered
-   independently. The apparent continuity of field line structures arises
-   from the spatial density of sample points, not from explicit polyline
-   geometry.
+5. **Append-mode interpretation depends on coordinate compatibility.**
+   Merged datasets must share a meaningful frame and scale if they are to be interpreted physically.
 
-5. **Potential field extrapolation (solar dataset) is an approximation.**
-   The Nakagawa–Raadu Green's function method recovers a current-free
-   field above the photosphere. Real coronal fields include electric
-   currents not captured by this model.
-
-6. **Deduplication is spatial, not physical.** The coordinate-proximity
-   deduplication in append mode operates on scene-unit coordinates. It has
-   no physical basis when datasets use different coordinate systems or units.
-
-7. **Memory ceiling is enforced but not validated against GPU limits.**
-   The 5,000-point ceiling reduces overdraw load, but GPU memory limits
-   vary by device. The in-browser heap monitor (`MEM` badge) tracks JS
-   heap only; VRAM is not monitored.
-
-8. **Saturn reference body scale is schematic.** The wireframe spheroid is
-   sized for visual reference only. Its scene-unit size does not correspond
-   to any specific physical radius in the loaded datasets.
+6. **Included datasets are primarily synthetic/model-derived examples.**
+   Real-time and measured data ingestion are future goals.
 
 ---
 
-## Future Development Recommendations
+## Roadmap
 
-The following directions are suggested as next steps, ordered by scientific
-legibility impact:
+### Near-term
 
-1. **Polyline field line rendering**: replace independent splats with
-   connected `THREE.TubeGeometry` or `THREE.Line3` chains per traced field
-   line. This would correctly convey field line connectivity and direction.
+* internal theme presets
+* preset save/load workflow
+* further panel organisation / collapsible sections
+* finer realism tuning for splat edge behaviour
 
-2. **Physical unit normalisation**: add a metadata-driven scale factor so
-   datasets in different physical units (km, R_E, R_Saturn) can be
-   co-displayed with correct relative scale.
+### Mid-term
 
-3. **Measured data ingestion**: implement a loader for NASA CDAWeb or
-   SPDF heliospheric ASCII files so that real spacecraft magnetometer
-   records can be loaded alongside synthetic datasets.
+* NOAA SWPC ingestion
+* NASA CDAWeb ingestion
+* true multi-frame sequence handling
+* **Data Pulse** mode for actual time-resolved datasets
 
-4. **Inferred structure overlay**: the "Show inferred structures" toggle
-   is currently a disabled placeholder. A future release should populate
-   it with structures derived from field-line tracing through the loaded
-   potential field, tagged as `data_type: 'inferred'` and rendered at
-   reduced opacity to distinguish them from the source data.
+### Longer-term
 
-5. **Coordinate frame selector**: add a UI dropdown to specify the
-   physical coordinate frame of each loaded dataset (GSM, GSE, SIII, HGS),
-   enabling the visualizer to apply rotation transforms before rendering.
+* converter pipelines for additional scientific archives
+* more polarity modes:
+
+  * component polarity
+  * radial polarity
+  * outward/inward polarity
+* SPARC conversion / galaxy-scale exploratory views
+* explicit measured vs inferred structural layers
+
+---
 
 ## Citation
 
-If you use AstroSplat in research, teaching, outreach, or derivative work,
-please cite the repository release:
+If you use AstroSplat in research, teaching, outreach, or derivative work, please cite the repository release:
 
-Figueiredo, V. M. F. (2026). *AstroSplat: Browser-native volumetric
-visualization for astrophysical vector fields* (v0.1.0) [win64 10/11.
-Zenodo. https://doi.org/10.5281/zenodo.19377621
+**Figueiredo, V. M. F.** (2026).
+*AstroSplat: Browser-native visualization for astrophysical vector fields* (v1.1.1).
+Zenodo. [https://doi.org/10.5281/zenodo.19377621](https://doi.org/10.5281/zenodo.19377621)
+
+---
+
+## License
+
+MIT License
+
+
+
+
+```
