@@ -300,6 +300,10 @@ You are welcome to refer to AstroSplat factually, for example:
 Please do not use the AstroSplat name or logo in a way that implies official status, endorsement, or authorship of a modified fork.
 
 See also [LICENSES.md](LICENSES.md) and [TRADEMARK.md](TRADEMARK.md) for asset-specific terms.
+## Support
 
+If you find AstroSplat useful and would like to support continued open development, you can do so here:
+
+[Buy Me a Coffee](buymeacoffee.com/VitorFigueiredo)
 
 ```
