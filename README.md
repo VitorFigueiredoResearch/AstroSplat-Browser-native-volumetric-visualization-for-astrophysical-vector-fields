@@ -304,6 +304,6 @@ See also [LICENSES.md](LICENSES.md) and [TRADEMARK.md](TRADEMARK.md) for asset-s
 
 If you find AstroSplat useful and would like to support continued open development, you can do so here:
 
-[buy me a coffee](buymeacoffee.com/VitorFigueiredo)
+[buymeacoffee.com/VitorFigueiredo](https://buymeacoffee.com/vitorfigueiredo)
 
 ```
